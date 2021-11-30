@@ -2,7 +2,7 @@ import numpy as np
 
 class Neuro:
     '''
-      Нейронная сеть с одним скрытым слоем из 2 нейронов, одним выходом и двумя входами
+      Нейронная сеть с одним скрытым слоем из 2 нейронов, одним выходом и неограниченными входами...
     '''
     
     def sigm(self, x: float) -> float:
@@ -20,7 +20,7 @@ class Neuro:
         return ((y_true - y_pred)**2).mean()
 
     
-    def __init__(self):
+    def __init__(self, num_input):
         '''
             Конструктор без параметров
             
@@ -28,17 +28,41 @@ class Neuro:
             для весов и смещений
         '''
         # Начальные случайные веса
-        self.w1 = np.random.normal()
-        self.w2 = np.random.normal()
-        self.w3 = np.random.normal()
-        self.w4 = np.random.normal()
-        self.w5 = np.random.normal()
-        self.w6 = np.random.normal()
-
+        self.weights_h1 = [np.random.normal() for i in range(num_input)]
+        self.weights_h2 = [np.random.normal() for i in range(num_input)]
+        self.weights_out = [np.random.normal() for i in range(2)]
+        
         # Начальные случайные смещения
         self.b1 = np.random.normal()
         self.b2 = np.random.normal()
         self.b3 = np.random.normal()
+
+    def save_weights(self, filename):
+        f = open(filename, 'w')
+        for weight in self.weights_h1:
+            f.write(str(weight) + ' ')
+        f.write('\n')
+        for weight in self.weights_h2:
+            f.write(str(weight) + ' ')
+        f.write('\n')
+        for weight in self.weights_out:
+            f.write(str(weight) + ' ')
+        f.write('\n')
+        f.write(str(self.b1) + '\n')
+        f.write(str(self.b2) + '\n')
+        f.write(str(self.b3) + '\n')
+        f.close()
+
+    def read_weights(self, filename):
+        f = open(filename, 'r')
+        lines = f.readlines()
+        self.weights_h1 = [float(value) for value in lines[0].split()]
+        self.weights_h2 = [float(value) for value in lines[1].split()]
+        self.weights_out = [float(value) for value in lines[2].split()]
+        self.b1 = float(lines[3])
+        self.b2 = float(lines[4])
+        self.b3 = float(lines[5])
+        f.close()
 
 
     def feed_forward(self, x, get_type = 0):
@@ -52,13 +76,19 @@ class Neuro:
             1 - (для внутреннего использования) - возврат всех
             вычисляемых значений в виде словаря
         '''
-        sum_h1 = self.w1 * x[0] + self.w2 * x[1] + self.b1
+        sum_h1 = 0
+        for i in range(len(self.weights_h1)):
+            sum_h1 += self.weights_h1[i] * x[i]
+        sum_h1 += self.b1
         h1 = self.sigm(sum_h1)
-        
-        sum_h2 = self.w3 * x[0] + self.w4 * x[1] + self.b2
+
+        sum_h2 = 0
+        for i in range(len(self.weights_h2)):
+            sum_h2 += self.weights_h2[i] * x[i]
+        sum_h2 += self.b2
         h2 = self.sigm(sum_h2)
         
-        sum_out = self.w5 * h1 + self.w6 * h2 + self.b3
+        sum_out = self.weights_out[0] * h1 + self.weights_out[1] * h2 + self.b3
         output = self.sigm(sum_out)
         
         if (get_type == 1):
@@ -68,30 +98,29 @@ class Neuro:
             return output
 
 
-    def train(self, data, all_y_trues):
+    def train(self, data, all_y_trues, iterations = 1000):
         '''
             Функция тренировки
             
             Отрабатывает определенное количество итераций
             передний проход и изменение весов в соответствии с его результатами
         '''
-        iterations = 1000
-
         for iteration in range(iterations):
-          for x, y_true in zip(data, all_y_trues):  
-            inter_res = self.feed_forward(x, 1)
+            for x, y_true in zip(data, all_y_trues):
+                inter_res = self.feed_forward(x, 1)
+                sum_h1 = inter_res['sum_h1']
+                h1 = inter_res['h1']
             
-            sum_h1 = inter_res['sum_h1']
-            h1 = inter_res['h1']
-            
-            sum_h2 = inter_res['sum_h2']
-            h2 = inter_res['h2']
+                sum_h2 = inter_res['sum_h2']
+                h2 = inter_res['h2']
 
-            sum_out = inter_res['sum_out']
-            output = inter_res['output']
-            y_pred = output
+                sum_out = inter_res['sum_out']
+                output = inter_res['output']
+                y_pred = output
 
-            self.change_params(x, y_true, y_pred, h1, h2, sum_h1, sum_h2, sum_out)
+                self.change_params(x, y_true, y_pred, h1, h2, sum_h1, sum_h2, sum_out)
+            if (iteration % 100 == 0 and iteration > 0):
+                print("iteration: ", iteration)
 
 
     def change_params(self, x, y_true: list, y_pred: list, h1: float, h2: float,
@@ -112,35 +141,30 @@ class Neuro:
         d_L_d_ypred = -2 * (y_true - y_pred)
 
         # output
-        d_ypred_d_w5 = h1 * self.sigm_deriv(sum_out)
-        d_ypred_d_w6 = h2 * self.sigm_deriv(sum_out)
+        d_ypred_d_wout1 = h1 * self.sigm_deriv(sum_out)
+        d_ypred_d_wout2 = h2 * self.sigm_deriv(sum_out)
         d_ypred_d_b3 = self.sigm_deriv(sum_out)
 
-        d_ypred_d_h1 = self.w5 * self.sigm_deriv(sum_out)
-        d_ypred_d_h2 = self.w6 * self.sigm_deriv(sum_out)
+        d_ypred_d_h1 = self.weights_out[0] * self.sigm_deriv(sum_out)
+        d_ypred_d_h2 = self.weights_out[1] * self.sigm_deriv(sum_out)
 
-        # h1
-        d_h1_d_w1 = x[0] * self.sigm_deriv(sum_h1)
-        d_h1_d_w2 = x[1] * self.sigm_deriv(sum_h1)
-        d_h1_d_b1 = self.sigm_deriv(sum_h1)
-
-        # h2
-        d_h2_d_w3 = x[0] * self.sigm_deriv(sum_h2)
-        d_h2_d_w4 = x[1] * self.sigm_deriv(sum_h2)
-        d_h2_d_b2 = self.sigm_deriv(sum_h2)
 
         # Меняем веса и смещения
         # h1
-        self.w1 -= learn_rate * d_L_d_ypred * d_ypred_d_h1 * d_h1_d_w1
-        self.w2 -= learn_rate * d_L_d_ypred * d_ypred_d_h1 * d_h1_d_w2
+        for i in range(len(self.weights_h1)):
+            d_h1_d_wi = x[i] * self.sigm_deriv(sum_h1)
+            self.weights_h1[i] -= learn_rate * d_L_d_ypred * d_ypred_d_h1 * d_h1_d_wi
+        d_h1_d_b1 = self.sigm_deriv(sum_h1)
         self.b1 -= learn_rate * d_L_d_ypred * d_ypred_d_h1 * d_h1_d_b1
 
         # h2
-        self.w3 -= learn_rate * d_L_d_ypred * d_ypred_d_h2 * d_h2_d_w3
-        self.w4 -= learn_rate * d_L_d_ypred * d_ypred_d_h2 * d_h2_d_w4
+        for i in range(len(self.weights_h2)):
+            d_h2_d_wi = x[i] * self.sigm_deriv(sum_h2)
+            self.weights_h2[i] -= learn_rate * d_L_d_ypred * d_ypred_d_h2 * d_h2_d_wi
+        d_h2_d_b2 = self.sigm_deriv(sum_h2)
         self.b2 -= learn_rate * d_L_d_ypred * d_ypred_d_h2 * d_h2_d_b2
 
         # output
-        self.w5 -= learn_rate * d_L_d_ypred * d_ypred_d_w5
-        self.w6 -= learn_rate * d_L_d_ypred * d_ypred_d_w6
+        self.weights_out[0] -= learn_rate * d_L_d_ypred * d_ypred_d_wout1
+        self.weights_out[1] -= learn_rate * d_L_d_ypred * d_ypred_d_wout2
         self.b3 -= learn_rate * d_L_d_ypred * d_ypred_d_b3

@@ -1,41 +1,55 @@
 from neuro import Neuro
 import numpy as np
+import warnings
+from image_work import image_to_array
 
 def input_data(filename: str):
     # Читаем датасет из файла
-    data = np.loadtxt(filename, usecols=(0,1))
-    results = np.loadtxt(filename, usecols=(2))
-
+    f = open(filename, 'r')
+    num_cols = len(f.readline().split())
+    f.close()
+    data = np.loadtxt(filename, usecols=(np.arange(0,num_cols-1)))
+    results = np.loadtxt(filename, usecols=(num_cols-1))
     # Смещения параметров на средние значения
-    bias_first = data[:,0].mean()
-    bias_second = data[:,1].mean()
-    data[:,0] -= bias_first
-    data[:,1] -= bias_second
+    num_cols = np.shape(data)[1]
+    biases = [data[:,i].mean() for i in range(num_cols)]
+    for i in range(num_cols):
+        data[:,i] -= biases[i]
+    return {'data': data, 'results': results, 'biases': biases}
 
-    return {'data': data, 'results': results, 'b1': bias_first, 'b2': bias_second}
+def input_image(filename: str):
+    data = np.loadtxt(filename)
 
 if __name__ == '__main__':
+    warnings.filterwarnings('ignore')
     # Запись данных
     filename = input("Введите название файла с тренировочными данными: ")
     response = input_data(filename)
     data = response['data']
     results = response['results']
-    bias_first = response['b1']
-    bias_second = response['b2']
+    biases = response['biases']
 
     # Тренировка сети
-    network = Neuro()
-    network.train(data, results)
+    network = Neuro(np.shape(data)[0])
+    #network.read_weights('weights.txt')
+    network.train(data, results, 1000)
+    #network.save_weights('weights.txt')
 
     class1 = input("Введите название типа объектов, которым соответствует 1: ")
     class2 = input("Введите название типа объектов, которым соответствует 0: ")
 
     # Проверка на новых значениях
-    param_first = float(input("Введите первый параметр объекта: ")) - bias_first
-    param_second = float(input("Введите второй параметр объекта: ")) - bias_second
-    output = network.feed_forward(np.array([param_first, param_second]))
-    print(f"Результат: {output:.3f}")
-    class_res = class1 if output > 0.5 else class2
-    print(f"Объект больше соответствует классу '{class_res}'")
+    while True:
+        filename = input("Введите название файла с данными для определения: ")
+        if (filename.split('.')[1] == 'jpg'):
+            new_data = image_to_array(filename)
+        else:
+            new_data = np.loadtxt(filename)
+        num_cols = len(new_data)
+        new_data = [new_data[i] - biases[i] for i in range(num_cols)]
+        output = network.feed_forward(new_data)
+        print(f"Результат: {output:.3f}")
+        class_res = class1 if output > 0.5 else class2
+        print(f"Объект больше соответствует классу '{class_res}'")
 
     
