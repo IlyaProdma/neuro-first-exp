@@ -37,14 +37,3 @@ def image_to_array(filename: str):
         for pixel in row:
             result.append(pixel)
     return result
-
-f_out = open('def_cat.txt', 'w')
-arr = image_to_array('tests/test2.jpg')
-for el in arr:
-    f_out.write(str(el) + ' ')
-f_out.close()
-f_out = open('def_dog.txt', 'w')
-arr = image_to_array('tests/testt10.jpg')
-for el in arr:
-    f_out.write(str(el) + ' ')
-f_out.close()
