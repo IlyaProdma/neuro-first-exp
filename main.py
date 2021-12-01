@@ -30,26 +30,28 @@ if __name__ == '__main__':
     biases = response['biases']
 
     # Тренировка сети
-    network = Neuro(np.shape(data)[0])
-    #network.read_weights('weights.txt')
+    network = Neuro(256, 10)
     network.train(data, results, 1000)
-    #network.save_weights('weights.txt')
 
     class1 = input("Введите название типа объектов, которым соответствует 1: ")
     class2 = input("Введите название типа объектов, которым соответствует 0: ")
 
     # Проверка на новых значениях
     while True:
-        filename = input("Введите название файла с данными для определения: ")
-        if (filename.split('.')[1] == 'jpg'):
-            new_data = image_to_array(filename)
-        else:
-            new_data = np.loadtxt(filename)
-        num_cols = len(new_data)
-        new_data = [new_data[i] - biases[i] for i in range(num_cols)]
-        output = network.feed_forward(new_data)
-        print(f"Результат: {output:.3f}")
-        class_res = class1 if output > 0.5 else class2
-        print(f"Объект больше соответствует классу '{class_res}'")
+        try:
+            filename = input("Введите название файла с данными для определения: ")
+            if (filename.split('.')[1] == 'jpg'):
+                new_data = image_to_array(filename)
+            else:
+                new_data = np.loadtxt(filename)
+            num_cols = len(new_data)
+            new_data = [new_data[i] - biases[i] for i in range(num_cols)]
+            output = network.feed_forward(new_data)
+            print(f"Результат: {output:.3f}")
+            #print(f"Результат1: {output_values[1]:.3f}")
+            class_res = class1 if output > 0.5 else class2
+            print(f"Объект больше соответствует классу '{class_res}'")
+        except:
+            print("Произошла ошибка, проверьте название файла")
 
     
